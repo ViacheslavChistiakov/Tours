@@ -14,6 +14,18 @@ const handleDuplicateNameDB = (err) => {
   return new AppError(message, 400);
 };
 
+const handleJwtValidation = () =>
+  new AppError('Invalid token, please log in again', 401);
+
+const handleJwtExpired = () =>
+  new AppError('Token has been expired, please log in again', 401);
+
+const handleValidateErrorDB = (err) => {
+  const errors = Object.values(err.errors).map((el) => el.message);
+  const message = `Invalid inputs data: ${errors.join('. ')}`;
+  return new AppError(message, 400);
+};
+
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -31,7 +43,6 @@ const sendErrorProd = (err, res) => {
       message: err.message,
     });
   } else {
-    console.log('Pizdec', err);
     res.status(500).json({
       status: err,
       message: 'Something went very wrong!',
@@ -49,6 +60,9 @@ module.exports = (err, req, res, next) => {
     let error = { ...err };
     if (err.name === 'CastError') error = handleCastErrorDB(error);
     if (err.code === 11000) error = handleDuplicateNameDB(error);
+    if (err.name === 'ValidationError') error = handleValidateErrorDB(error);
+    if (err.name === 'JsonWebTokenError') error = handleJwtValidation();
+    if (err.name === 'TokenExpiredError') error = handleJwtExpired();
     sendErrorProd(error, res);
   }
 };
